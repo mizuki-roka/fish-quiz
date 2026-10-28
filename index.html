@@ -703,6 +703,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
 }
 * { box-sizing: border-box; }
 input, select, textarea, button { color-scheme: light; }
+/* スマホのブラウザ（Samsungなど）は、この「ダーク用の指定」があるページを勝手に暗くしない。中身はいつもの明るい色のまま */
+@media (prefers-color-scheme: dark) { :root { --bg: #e4f8fb; --surface: #ffffff; --fg: #123f48; } html, body { background-color: #e4f8fb; } }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
 body { margin: 0; }
@@ -721,7 +723,8 @@ body {
 .top .day { font-family: var(--font-body); font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 4px; }
 .progress { font-size: 13px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .progress b { color: var(--fg); }
-.practice-tag { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--sun); color: #5a3d00; font-size: 12px; font-weight: 700; }
+.fish-card { position: relative; }
+.practice-tag { position: absolute; top: 6px; right: 8px; z-index: 2; padding: 1px 8px; border-radius: 999px; background: var(--sun); color: #5a3d00; font-size: 12px; font-weight: 700; }
 #play { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 .card { background: var(--surface); border-radius: 14px; padding: 12px 14px; border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0, 120, 140, .08); }
 .fish-card { display: flex; align-items: center; gap: 12px; }
@@ -1518,12 +1521,13 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 <div class="app">
   <header class="top">
     <h1>熱帯魚の産地当て<span class="day" id="day"></span></h1>
-    <div class="progress"><b id="qnum">1</b>/<span id="qtotal">5</span>問　<b id="total">0</b>点<span class="practice-tag" id="practice-tag" hidden>練習</span><button class="sound-btn menu-btn" id="btn-menu" type="button" aria-label="メニュー" aria-expanded="false" aria-controls="menu"><svg class="menu-ic" viewBox="0 0 20 16" width="18" height="14" aria-hidden="true"><path d="M2 2h16M2 8h16M2 14h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div>
+    <div class="progress"><b id="qnum">1</b>/<span id="qtotal">5</span>問　<b id="total">0</b>点<button class="sound-btn menu-btn" id="btn-menu" type="button" aria-label="メニュー" aria-expanded="false" aria-controls="menu"><svg class="menu-ic" viewBox="0 0 20 16" width="18" height="14" aria-hidden="true"><path d="M2 2h16M2 8h16M2 14h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div>
   </header>
 
   <main id="play">
     <div class="side">
     <section class="card fish-card">
+      <span class="practice-tag" id="practice-tag" hidden>練習</span>
       <div class="fish-art" id="fish-art"></div>
       <div class="fish-text">
         <div class="fish-name" id="fish-name"></div>
