@@ -3,6 +3,8 @@
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="author" content="Mizuki Roka">
+<meta name="copyright" content="© 2026 Mizuki Roka. All rights reserved.">
 <meta name="description" content="熱帯魚のふるさとを世界地図で当てる、毎日5問のゲーム。">
 <meta property="og:title" content="熱帯魚の産地当て">
 <meta property="og:description" content="熱帯魚のふるさとを世界地図で当てる、毎日5問のゲーム。">
@@ -808,6 +810,8 @@ body {
 .result-list .sub { color: var(--muted); font-size: 12px; }
 .result-actions { display: flex; flex-direction: column; gap: 8px; }
 .result-note { font-size: 12px; color: var(--muted); margin: 0; }
+.copyright { margin: 4px 0 0; font-size: 11px; color: var(--muted); text-align: center; }
+.menu-copy { margin-top: auto; padding-top: 16px; }
 /* バッジ */
 #btn-badges { position: relative; }
 @media (max-width: 380px) { .top .day { display: none; } .top h1 { font-size: 16px; } .top .sound-btn { margin-left: 2px; padding: 4px 4px; font-size: 14px; } .progress { font-size: 12px; } }
@@ -1596,6 +1600,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
       <button class="chip" id="btn-dex-all">図鑑：満点+5回</button>
       <button class="chip" id="btn-badge-reset">バッジと水槽と図鑑を消す</button>
     </section>
+    <p class="copyright menu-copy">© 2026 Mizuki Roka. All rights reserved.</p>
     </nav>
   </div>
 
@@ -1614,6 +1619,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
       <button class="btn secondary" id="btn-result-badges" type="button">🏅 バッジを見る</button>
       <button class="btn secondary" id="btn-replay" type="button">🔁 もう一度あそぶ（練習）</button>
     </div>
+    <p class="copyright">© 2026 Mizuki Roka. All rights reserved.</p>
     <!-- 見た目確認用のダミー（決済はしない） -->
     <div class="premium-card">
       <p class="premium-label">PREMIUM</p>
@@ -1660,6 +1666,10 @@ html.modal-open, html.modal-open body { overflow: hidden; }
         <h3>作り方と地図</h3>
         <p>水木ろかが、AIと相談しながら作りました。魚の絵はAIの画像ツールで描き、ヒレの形や模様を1匹ずつ確かめて直しています。</p>
         <p>地図の衛星写真は NASA の「Blue Marble」です。地図の表示には Leaflet を使っています。</p>
+
+        <h3>著作権</h3>
+        <p>このゲームの絵・文章・プログラムの著作権は、水木ろかにあります。無断での転載・再配布や、改変して公開することはご遠慮ください。リンクでの紹介やシェアは大歓迎です。</p>
+        <p>© 2026 Mizuki Roka. All rights reserved.</p>
 
         <h3>おことわり</h3>
         <p>内容はできるだけ正しくなるよう気をつけていますが、まちがいがあるかもしれません。このゲームの情報を使って起きたことには、責任を負いかねます。</p>
@@ -3433,11 +3443,44 @@ window.FishSound = (function () {
     }
   };
 
+  // 水槽の環境音：水が流れる「ちょろちょろ」と、ときどき「こぽこぽ」。水槽を開いているあいだだけ鳴らす
+  var amb = null, ambWant = false;
+  function ambStart() {
+    if (amb) return;
+    var a = audio(); if (!a) return;
+    amb = { timer: null, trickle: null };
+    // ちょろちょろ：高めの小さな水滴の音を、細かく不規則にならべる（小川やろ過器の水の落ちる音）
+    (function trickle() {
+      if (!amb) return;
+      var f = 900 + Math.random() * 1600;
+      tone(a, { f: f, f2: f * (Math.random() < 0.5 ? 1.35 : 0.75), glide: 0.035, dur: 0.045, vol: 0.006 + Math.random() * 0.012, lowpass: 3200 });
+      amb.trickle = setTimeout(trickle, 25 + Math.random() * 90);
+    })();
+    // こぽこぽ：低めの泡の音
+    (function bubble() {
+      if (!amb) return;
+      var n = Math.random() < 0.3 ? 3 : 1;   // ときどき続けて「こぽこぽこぽ」
+      for (var k = 0; k < n; k++) {
+        var f = 380 + Math.random() * 520;
+        tone(a, { f: f, f2: f * 1.9, glide: 0.07, dur: 0.09, at: k * (0.07 + Math.random() * 0.06), vol: 0.025 + Math.random() * 0.03, lowpass: 2200 });
+      }
+      amb.timer = setTimeout(bubble, 350 + Math.random() * 1100);
+    })();
+  }
+  function ambStop() {
+    if (!amb) return;
+    clearTimeout(amb.timer); clearTimeout(amb.trickle); amb = null;
+  }
+  // ほかのタブに切りかえたら止めて、もどったら再開
+  document.addEventListener("visibilitychange", function () { if (document.hidden) ambStop(); else if (ambWant && on) ambStart(); });
+
   return {
+    ambient: function (want) { ambWant = want; try { if (want && on) ambStart(); else ambStop(); } catch (e) { /* 音が出なくても遊べる */ } },
     isOn: function () { return on; },
     toggle: function () {
       on = !on;
       try { localStorage.setItem(KEY, on ? "on" : "off"); } catch (e) { /* 保存できなくても使える */ }
+      this.ambient(ambWant);
       if (on) this.play("tap");
       return on;
     },
@@ -6300,6 +6343,9 @@ window.FishCompat = (function () {
     $("btn-aquarium-close").focus();
   }
   function closeAquarium() { $("aquarium").classList.remove("big"); $("aquarium").hidden = true; setCareMode(""); $("btn-aquarium").focus(); }
+  // 水槽の画面・レイアウトの画面が開いているあいだは、水の音とこぽこぽを鳴らす
+  function syncTankSound() { FishSound.ambient(!$("aquarium").hidden || !$("tank-edit").hidden); }
+  if (window.MutationObserver) { var tankSoundMo = new MutationObserver(syncTankSound); ["aquarium", "tank-edit"].forEach(function (id) { tankSoundMo.observe($(id), { attributes: true, attributeFilter: ["hidden"] }); }); }
   $("btn-aquarium").addEventListener("click", openAquarium);
   $("btn-aquarium-close").addEventListener("click", closeAquarium);
   // 水槽を大きく見る（レイアウトの全画面と同じく、使えるときは本当の全画面に）
