@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light only">
+<meta name="color-scheme" content="light dark">
 <meta name="description" content="熱帯魚のふるさとを世界地図で当てる、毎日5問のゲーム。">
 <meta property="og:title" content="熱帯魚の産地当て">
 <meta property="og:description" content="熱帯魚のふるさとを世界地図で当てる、毎日5問のゲーム。">
@@ -681,7 +681,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 /* レイアウト：上に魚カード、まん中に地図、下に答えとボタン。スマホ1画面で完結 */
 :root {
   /* 熱帯の水辺らしい明るい色。端末がダークモードでも、いつもこの明るい見た目にする */
-  color-scheme: light only;
+  color-scheme: light dark;   /* 「両方に対応」と伝えると、スマホのブラウザが勝手に暗くしない。色はいつも明るいまま */
   --bg: #e4f8fb;
   --bg-2: #fff7e0;
   --surface: #ffffff;
@@ -702,6 +702,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   --font-body: "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
+input, select, textarea, button { color-scheme: light; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
 body { margin: 0; }
@@ -765,6 +766,8 @@ body {
 }
 .btn:disabled { background: var(--disabled); color: var(--muted); cursor: default; }
 .btn:focus-visible { outline: 3px solid var(--guess); outline-offset: 2px; }
+/* スマホ：答えたあとの「次の問題へ」は画面の下に浮かせる（答えの説明が長くても隠れない） */
+@media (max-width: 899px) { #btn-next { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); width: auto; z-index: 900; box-shadow: 0 6px 18px rgba(0, 60, 80, .3); } #answer { margin-bottom: 64px; } }
 .btn.secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); padding: 11px; }
 #result { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; text-align: center; padding: 20px 18px; }
 .result-label { margin: 0; color: var(--muted); font-size: 14px; }
@@ -1605,6 +1608,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
       <a class="btn" id="btn-share" href="#" target="_blank" rel="noopener">Xでシェアする</a>
       <button class="btn secondary" id="btn-copy">結果をコピー</button>
       <button class="btn secondary" id="btn-result-badges" type="button">🏅 バッジを見る</button>
+      <button class="btn secondary" id="btn-replay" type="button">🔁 もう一度あそぶ（練習）</button>
     </div>
     <!-- 見た目確認用のダミー（決済はしない） -->
     <div class="premium-card">
@@ -3864,6 +3868,13 @@ window.AquaCare = (function () {
     { id: "cardinal", name: "新しい仲間：カージナルテトラ", streak: 14, fish: "cardinal", count: 5 },
     { id: "discus", name: "新しい仲間：ディスカス", streak: 30, fish: "discus", count: 1 }
   ];
+  // スターターキットの石と水草（小石・バリスネリアと同じ絵。だれでも最初から1つずつ持っている）
+  [["pebble", "starter_stone", "スターター石"], ["valis", "starter_plant", "スターター水草"]].forEach(function (a) {
+    var base = DECOR.filter(function (d) { return d.id === a[0]; })[0], c = {};
+    for (var k in base) c[k] = base[k];
+    delete c.badges; c.id = a[1]; c.name = a[2]; c.starter = 1;
+    DECOR.push(c);
+  });
   function decoHave(d, badges, best) { return d.badges ? badges >= d.badges : best >= d.streak; }
   // 持っている飾り、次にもらえる飾り
   function decor(badges, best) {
@@ -3878,7 +3889,7 @@ window.AquaCare = (function () {
   function byId(id) { for (var i = 0; i < DECOR.length; i++) if (DECOR[i].id === id) return DECOR[i]; return null; }
   function placeable(d) { return !!d.art && !d.bubbles; }
   // 角度を変えられる素材：流木・石と、石や流木にくっつく水草（土に挿す水草はまっすぐ立てる）
-  var ROTATE = ["pebble", "lava", "seiryu", "wood_s", "wood_l", "drift_up", "drift_low", "moss", "anubias", "micro", "bolbitis"];
+  var ROTATE = ["pebble", "lava", "seiryu", "wood_s", "wood_l", "drift_up", "drift_low", "starter_stone", "moss", "anubias", "micro", "bolbitis"];
   function canRotate(id) { return ROTATE.indexOf(id) >= 0; }
   function price(d) { return POOL.indexOf(d.id) >= 0 ? 10 : 30; }
   function decoSVG(d) {
@@ -3889,8 +3900,9 @@ window.AquaCare = (function () {
   // おすすめ見本は「スターターキット」：流木2本だけ置いて、あとは自分で飾れるよう余白を残す
   // （本人が作った完成形は presets/yuu_layout_1.json に残してある）
   var PRESETS = [
-    { id: "starter", name: "スターターキット", icon: "🪵", desc: "流木2本だけのシンプルな土台。ここから水草や石を足そう", slots: [
-      { t: "drift_up", x: 66, y: 0.12, r: 6, j: 1 }, { t: "drift_low", x: 32, y: 0.02, r: -4, j: 1 } ] }   // j：置くたびに少しだけ角度を変える
+    { id: "starter", name: "スターターキット", icon: "🪵", desc: "流木2本と、石・水草1つずつのシンプルな土台。ここから飾りを足そう", slots: [
+      { t: "drift_up", x: 66, y: 0.12, r: 6, j: 1 }, { t: "drift_low", x: 32, y: 0.02, r: -4, j: 1 },
+      { t: "starter_stone", x: 47, y: 0.05, r: 0, j: 1 }, { t: "starter_plant", x: 10, y: 0.35 } ] }   // j：置くたびに少しだけ角度を変える
   ];
 
   // 重なり順：奥にあるほど後ろ。o は「前面へ・背面へ」で足した分（古いデータは0）
@@ -3966,7 +3978,7 @@ window.AquaCare = (function () {
 // 水槽のレイアウト。素材の置き場所、持ち物、ポイント、毎日のおくりもの。記録はこの端末のブラウザにだけ残る
 window.FishTank = (function () {
   var KEY = "fishquiz-tank";
-  var HARD = ["pebble", "wood_s", "lava", "wood_l", "seiryu"];   // 流木・石（ほかは水草）
+  var HARD = ["pebble", "wood_s", "lava", "wood_l", "seiryu", "drift_up", "drift_low", "starter_stone"];   // 流木・石（ほかは水草）
   var ECO_SCORE = 90, ECO_DAYS = 5;   // 特別な相棒：お世話をして環境スコア90以上の日を5日ためる
   // 水槽のガラスのコケ：最後にそうじしてからの日数でふえる（0:きれい 1:緑藻 2:髭状苔 3:茶ゴケ）。スコアからこれだけ引く
   var MOSS_PENALTY = [0, 5, 15, 30];
@@ -6541,6 +6553,8 @@ window.FishCompat = (function () {
   })();
   $("btn-badges").addEventListener("click", openBadges);
   $("btn-result-badges").addEventListener("click", openBadges);
+  // 結果画面から、同じ日の5問を練習でもう一度（図鑑・バッジ・ポイントは1回目だけ）
+  $("btn-replay").addEventListener("click", function () { restart(today, "今日"); });
   $("btn-badges-close").addEventListener("click", closeBadges);
   $("badges").addEventListener("click", function (e) { if (e.target === $("badges")) closeBadges(); });
   document.addEventListener("keydown", function (e) {
