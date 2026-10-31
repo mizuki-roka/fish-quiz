@@ -4665,7 +4665,7 @@ window.FishCompat = (function () {
 
   var WORLD_VIEW = [[-58, -170], [75, 180]];
   var map = L.map("map", {
-    preferCanvas: true, minZoom: 1, maxZoom: 7, attributionControl: false,
+    preferCanvas: true, minZoom: 1, maxZoom: 14, attributionControl: false,
     maxBounds: [[-85, -200], [85, 200]], maxBoundsViscosity: 0.8
   });
   map.fitBounds(WORLD_VIEW);
@@ -4678,6 +4678,11 @@ window.FishCompat = (function () {
       L.imageOverlay(SAT, [[-85.0511, -180 + dx], [85.0511, 180 + dx]], { pane: "sat", interactive: false }).addTo(map);
     });
   }
+  // 拡大すると、くわしい衛星写真に切りかわる（Sentinel-2 cloudless 2016、CC BY 4.0、無料。表記が必要）2026-10-31
+  L.tileLayer("https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg", { pane: "sat", minZoom: 5, maxZoom: 14, maxNativeZoom: 14,
+    attribution: '<a href="https://cloudless.eox.at" target="_blank" rel="noopener">EOxCloudless</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016 &amp; 2017)' }).addTo(map);
+  L.control.attribution({ prefix: false }).addTo(map);
+  window.__map = map;
   // 重なり順：(衛星写真250) → 陸(300) → 川と湖(350) → 答えの線や印(400、ふつうの重なり)
   map.createPane("land").style.zIndex = 300;
   var land = L.geoJSON(window.WORLD_GEOJSON, { interactive: false, style: landStyle, renderer: L.canvas({ pane: "land" }) }).addTo(map);
@@ -6932,7 +6937,7 @@ window.FishCompat = (function () {
       $("btn-next").textContent = current + 1 < questions.length ? "次の問題へ" : "結果を見る";
       // 答えの欄がのびて地図が小さくなるので、線が全部見えるように合わせなおす
       map.invalidateSize();
-      map.fitBounds(L.latLngBounds([guess.latlng, L.latLng(q.lat, q.lng)]).pad(0.4), { maxZoom: 5, animate: !REDUCED });
+      map.fitBounds(L.latLngBounds([guess.latlng, L.latLng(q.lat, q.lng)]).pad(0.4), { maxZoom: 5, animate: !REDUCED }); window.__ans = [q.lat, q.lng];
     });
   }
 
@@ -7764,6 +7769,30 @@ window.FISH_CHALLENGE = {
     update();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+</script>
+
+<!-- 地図の拡大と現地ズーム（2026-10-31） -->
+<style>
+/* 地図の拡大（くわしい衛星写真）と「現地にズーム」ボタン 2026-10-31 */
+.zoom-btn { margin-top: 6px; align-self: flex-start; }
+.leaflet-control-attribution { font-size: 9px; }
+</style><script>
+// 答えのあとに「🔭 現地にズームして見る」ボタン 2026-10-31
+// 地図と答えの座標は app.js が window.__map / window.__ans に入れる
+(function () {
+  var ans = document.getElementById("answer"), place = document.getElementById("answer-place"); if (!ans || !place) return;
+  var b = document.createElement("button"); b.type = "button"; b.className = "chip zoom-btn"; b.textContent = "🔭 現地にズームして見る";
+  place.parentNode.insertBefore(b, place.nextSibling);
+  var near = false;
+  b.addEventListener("click", function () {
+    var m = window.__map, a = window.__ans; if (!m || !a) return;
+    near = !near;
+    if (near) { m.flyTo(a, 10, { duration: 2.5 }); b.textContent = "🌏 世界地図にもどる"; }
+    else { m.flyTo(a, 3, { duration: 1.5 }); b.textContent = "🔭 現地にズームして見る"; }
+  });
+  // 答えが出た直後は、地図が答えへ動く演出が終わるまで押せない
+  new MutationObserver(function () { near = false; b.textContent = "🔭 現地にズームして見る"; if (!ans.hidden) { b.disabled = true; setTimeout(function () { b.disabled = false; }, 3200); } }).observe(ans, { attributes: true, attributeFilter: ["hidden"] });
 })();
 </script>
 
